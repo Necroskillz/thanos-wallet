@@ -18,10 +18,12 @@ import {
   tzToMutez,
   mutezToTz,
   isAddressValid,
+  isDomainNameValid,
   isKTAddress,
   toPenny,
   hasManager,
   ThanosAssetType,
+  useTezosDomains,
 } from "lib/thanos/front";
 import useSafeState from "lib/ui/useSafeState";
 import {
@@ -95,6 +97,7 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
   const allAccounts = useAllAccounts();
   const acc = useAccount();
   const tezos = useTezos();
+  const tezosDomains = useTezosDomains();
 
   const accountPkh = acc.publicKeyHash;
 
@@ -140,17 +143,61 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
   const amountFieldRef = React.useRef<HTMLInputElement>(null);
   const feeFieldRef = React.useRef<HTMLInputElement>(null);
 
-  const toFilled = React.useMemo(
+  const toFilledWithAddress = React.useMemo(
     () => Boolean(toValue && isAddressValid(toValue) && !isKTAddress(toValue)),
     [toValue]
   );
 
-  const filledAccount = React.useMemo(
-    () =>
-      (toFilled && allAccounts.find((a) => a.publicKeyHash === toValue)) ||
-      null,
-    [toFilled, allAccounts, toValue]
+  const toFilledWithDomain = React.useMemo(
+    () => (toValue && isDomainNameValid(toValue)),
+    [toValue]);
+
+  const resolveDomain = React.useCallback(async () => {
+    if (toFilledWithDomain) {
+      return await tezosDomains.resolveAddress(toValue);
+    } else {
+      return null;
+    }
+  }, [toValue, toFilledWithDomain, tezosDomains]);
+
+  const { data: resolvedAddress } = useSWR(() => ["resolve-domain", toValue, tezosDomains], resolveDomain, { shouldRetryOnError: false });
+
+  const toFilled = React.useMemo(
+    () => (toFilledWithAddress && !resolvedAddress) || (toFilledWithDomain && resolvedAddress),
+    [toFilledWithAddress, toFilledWithDomain, resolvedAddress]
   );
+
+  const toResolved = React.useMemo(() => resolvedAddress || toValue, [resolvedAddress, toValue]);
+
+  const filledAccount = React.useMemo(
+    () => (toResolved && allAccounts.find((a) => a.publicKeyHash === toResolved)) || null,
+    [allAccounts, toResolved]
+  );
+
+  const validateTo = React.useCallback((async (value: any) => {
+    if (!value?.length) {
+      return false;
+    }
+
+    if (isDomainNameValid(value)) {
+      const resolved = await tezosDomains.resolveAddress(value);
+      if (!resolved) {
+        return `Domain ${value} didn't resolve to an address`;
+      }
+
+      value = resolved;
+    }
+
+    if (isAddressValid(value)) {
+      if (isKTAddress(value)) {
+        return "Unable to transfer to KT... contract address";
+      }
+
+      return true;
+    }
+
+    return "Invalid address or domain name";
+  }), [tezosDomains]);
 
   const cleanToField = React.useCallback(() => {
     setValue("to", "");
@@ -168,7 +215,7 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
 
   const estimateBaseFee = React.useCallback(async () => {
     try {
-      const to = toValue;
+      const to = toResolved;
       const xtz = localAsset.symbol === ThanosAssetType.XTZ;
 
       const balanceBN = (await mutateBalance(
@@ -239,7 +286,7 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
           throw err;
       }
     }
-  }, [tezos, localAsset, accountPkh, toValue, mutateBalance, mutateXtzBalance]);
+  }, [tezos, localAsset, accountPkh, toResolved, mutateBalance, mutateXtzBalance]);
 
   const {
     data: baseFee,
@@ -253,7 +300,7 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
             tezos.checksum,
             localAsset.symbol,
             accountPkh,
-            toValue,
+            toResolved,
           ]
         : null,
     estimateBaseFee,
@@ -338,14 +385,16 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
 
   const [submitError, setSubmitError] = useSafeState<any>(
     null,
-    `${tezos.checksum}_${toValue}`
+    `${tezos.checksum}_${toResolved}`
   );
 
   const onSubmit = React.useCallback(
-    async ({ to, amount, fee: feeVal }: FormData) => {
+    async ({ amount, fee: feeVal }: FormData) => {
       if (formState.isSubmitting) return;
       setSubmitError(null);
       setOperation(null);
+
+      const to = toResolved;
 
       try {
         let transferParams = await toTransferParams(
@@ -399,6 +448,7 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
       formState.isSubmitting,
       tezos,
       localAsset,
+      toResolved,
       setSubmitError,
       setOperation,
       reset,
@@ -415,7 +465,7 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
         as={<NoSpaceField ref={toFieldRef} />}
         control={control}
         rules={{
-          validate: validateAddress,
+          validate: validateTo,
         }}
         onChange={([v]) => v}
         onFocus={() => toFieldRef.current?.focus()}
@@ -452,13 +502,17 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
             `Address to send ${localAsset.symbol} funds to.`
           )
         }
-        placeholder="e.g. tz1a9w1S7hN5s..."
+        placeholder="e.g. alice.tez or tz1a9w1S7hN5s..."
         errorCaption={errors.to?.message}
         style={{
           resize: "none",
         }}
         containerClassName="mb-4"
       />
+
+      {resolvedAddress && (
+        <div className="mb-4 text-gray-700">Resolved address: {resolvedAddress}</div>
+      )}
 
       {estimateFallbackDisplayed ? (
         <SpinnerSection />
@@ -474,7 +528,7 @@ const Form: React.FC<FormProps> = ({ localAsset, setOperation }) => {
                   <SendErrorAlert type="estimation" error={estimationError} />
                 );
 
-              case toValue === accountPkh:
+              case toResolved === accountPkh:
                 return (
                   <Alert
                     type="warn"
@@ -789,22 +843,6 @@ const SendErrorAlert: React.FC<SendErrorAlertProps> = ({ type, error }) => (
     className={classNames("mt-6 mb-4")}
   />
 );
-
-function validateAddress(value: any) {
-  switch (false) {
-    case value?.length > 0:
-      return true;
-
-    case isAddressValid(value):
-      return "Invalid address";
-
-    case !isKTAddress(value):
-      return "Unable to transfer to KT... contract address";
-
-    default:
-      return true;
-  }
-}
 
 const SpinnerSection: React.FC = () => (
   <div className="my-8 flex justify-center">

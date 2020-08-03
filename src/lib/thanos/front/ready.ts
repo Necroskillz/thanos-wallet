@@ -1,11 +1,11 @@
 import * as React from "react";
 import constate from "constate";
 import { TezosToolkit } from "@taquito/taquito";
+import { TezosDomainsResolver, NullNameResovler } from "@tezos-domains/resolver";
 import {
   ReadyThanosState,
   ThanosStatus,
   ThanosState,
-  ThanosAsset,
   usePassiveStorage,
   useThanosClient,
   addPendingOperations,
@@ -27,7 +27,7 @@ export const [
   useAccount,
   useSettings,
   useTezos,
-  useAllAssetsRef,
+  useTezosDomains,
 ] = constate(
   useReadyThanos,
   (v) => v.allNetworks,
@@ -38,7 +38,7 @@ export const [
   (v) => v.account,
   (v) => v.settings,
   (v) => v.tezos,
-  (v) => v.allAssetsRef
+  (v) => v.tezosDomains,
 );
 
 function useReadyThanos() {
@@ -123,16 +123,26 @@ function useReadyThanos() {
     return t;
   }, [createTaquitoSigner, createTaquitoWallet, network, accountPkh]);
 
+  const tezosDomains = React.useMemo(() => {
+    const supportedNetworks: string[] = ['carthagenet'];
+    if (supportedNetworks.includes(network.id)) {
+      const resolver = new TezosDomainsResolver({
+        network: network.id as any,
+        tezos: tezos,
+        caching: { enabled: true },
+      });
+
+      return resolver;
+    } else {
+      return new NullNameResovler();
+    }
+  }, [tezos, network.id]);
+
   React.useEffect(() => {
     if (process.env.NODE_ENV === "development") {
       (window as any).tezos = tezos;
     }
   }, [tezos]);
-
-  /**
-   * All assets reference(cache), needed for pretty network reselect
-   */
-  const allAssetsRef = React.useRef<ThanosAsset[]>([]);
 
   return {
     allNetworks,
@@ -147,7 +157,7 @@ function useReadyThanos() {
 
     settings,
     tezos,
-    allAssetsRef,
+    tezosDomains,
   };
 }
 

@@ -5,14 +5,18 @@ import {
   useNetwork,
   useTokens,
   useStorage,
-  useAllAssetsRef,
+  ThanosAsset,
 } from "lib/thanos/front";
 import { useAccount } from "./ready";
 
 export function useAssets() {
   const network = useNetwork();
   const { tokens } = useTokens();
-  const allAssetsRef = useAllAssetsRef();
+  
+  /**
+   * All assets reference(cache), needed for pretty network reselect
+   */
+  const allAssetsRef = React.useRef<ThanosAsset[]>([]);
 
   const allAssets = React.useMemo(
     () => [
@@ -29,7 +33,7 @@ export function useAssets() {
 
   const defaultAsset = React.useMemo(() => allAssets[0], [allAssets]);
 
-  return { allAssets, defaultAsset };
+  return { allAssets, defaultAsset, allAssetsRef };
 }
 
 export function useCurrentAsset() {

@@ -1806,6 +1806,22 @@
     bs58check "^2.1.2"
     buffer "^5.6.0"
 
+"@tezos-domains/core@^1.0.0-beta.3":
+  version "1.0.0-beta.3"
+  resolved "https://registry.yarnpkg.com/@tezos-domains/core/-/core-1.0.0-beta.3.tgz#140a3f79af07309bef72d5151f9a9a6dac733436"
+  integrity sha512-9vSrH7gYdDwkBLrC9PX+PGqBmKxXnh3H8pZDjVRjOn6fVz9XEL1o4s3IbHziemdHCP99/xWw1gwD2jo7cZE3ow==
+  dependencies:
+    bignumber.js "^9.0.0"
+    node-cache "^5.1.2"
+
+"@tezos-domains/resolver@^1.0.0-beta.3":
+  version "1.0.0-beta.3"
+  resolved "https://registry.yarnpkg.com/@tezos-domains/resolver/-/resolver-1.0.0-beta.3.tgz#c0a033c0ccaa1fac92bac9e4e4586bf67e419bf0"
+  integrity sha512-yCbtsESXxF9PsIpC/x1dSuFiiI5nUfqmeJ0O/WsVckKaueecD1lbYp0SkO7mQkRwAilSp90eWcqt+s38xdJC/A==
+  dependencies:
+    "@tezos-domains/core" "^1.0.0-beta.3"
+    node-cache "^5.1.2"
+
 "@thanos-wallet/dapp@^0.6.0":
   version "0.6.0"
   resolved "https://registry.yarnpkg.com/@thanos-wallet/dapp/-/dapp-0.6.0.tgz#88aafaccd788730420723fee9611078d0b592dbf"
@@ -3278,6 +3294,11 @@ clone-deep@^0.2.4:
     kind-of "^3.0.2"
     lazy-cache "^1.0.3"
     shallow-clone "^0.1.2"
+
+clone@2.x:
+  version "2.1.2"
+  resolved "https://registry.yarnpkg.com/clone/-/clone-2.1.2.tgz#1b7f4b9f591f1e8f83670401600345a02887435f"
+  integrity sha1-G39Ln1kfHo+DZwQBYANFoCiHQ18=
 
 clsx@^1.1.1:
   version "1.1.1"
@@ -6541,6 +6562,13 @@ no-case@^3.0.3:
   dependencies:
     lower-case "^2.0.1"
     tslib "^1.10.0"
+
+node-cache@^5.1.2:
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/node-cache/-/node-cache-5.1.2.tgz#f264dc2ccad0a780e76253a694e9fd0ed19c398d"
+  integrity sha512-t1QzWwnk4sjLWaQAS8CHgOJ+RAfmHpxFWmc36IWTiWHQfs0w5JDMBS1b1ZxQteo0vVVuWJvIUKHDkkeK7vIGCg==
+  dependencies:
+    clone "2.x"
 
 node-emoji@^1.8.1:
   version "1.10.0"

@@ -1,7 +1,8 @@
 import * as React from "react";
+import useSWR from "swr";
 import classNames from "clsx";
 import { Link } from "lib/woozie";
-import { useAccount } from "lib/thanos/front";
+import { useAccount, useTezosDomains } from "lib/thanos/front";
 import ErrorBoundary from "app/ErrorBoundary";
 import PageLayout from "app/layouts/PageLayout";
 import OperationHistory from "app/templates/OperationHistory";
@@ -17,7 +18,12 @@ import BakingSection from "./Explore/BakingSection";
 
 const Explore: React.FC = () => {
   const account = useAccount();
+  const tezosDomains = useTezosDomains();
   const accountPkh = account.publicKeyHash;
+
+  const resolveReverseName = React.useCallback(async () => await tezosDomains.reverseResolveName(accountPkh), [accountPkh, tezosDomains]);
+
+  const { data: reverseName } = useSWR(() => ["resolve-reverse-name", accountPkh, tezosDomains], resolveReverseName, { shouldRetryOnError: false });
 
   return (
     <PageLayout
@@ -33,7 +39,24 @@ const Explore: React.FC = () => {
       <hr className="mb-4" />
 
       <div className="flex flex-col items-center">
-        <HashChip hash={accountPkh} className="mb-6" />
+        <div className="flex flex-row items-center mb-6">
+          {reverseName &&
+            <button
+              type="button"
+              className={classNames(
+                "bg-gray-100 hover:bg-gray-200",
+                "rounded-sm shadow-xs",
+                "text-sm py-1 px-2",
+                "text-gray-600 leading-none select-none",
+                "transition ease-in-out duration-300",
+                "mr-2"
+              )}
+            >
+              {reverseName}
+            </button>}
+          
+          <HashChip hash={accountPkh} />
+        </div>
 
         <div style={{ minHeight: "12rem" }}>
           <SuspenseContainer

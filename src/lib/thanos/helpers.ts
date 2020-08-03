@@ -1,6 +1,7 @@
 import BigNumber from "bignumber.js";
 import { Tezos } from "@taquito/taquito";
 import { ValidationResult, validateAddress } from "@taquito/utils";
+import { validateDomainName, DomainNameValidationResult } from '@tezos-domains/core';
 
 export function hasManager(manager: any) {
   return manager && typeof manager === "object" ? !!manager.key : !!manager;
@@ -16,6 +17,10 @@ export function mutezToTz(mutez: any) {
 
 export function isAddressValid(address: string) {
   return validateAddress(address) === ValidationResult.VALID;
+}
+
+export function isDomainNameValid(name: string) {
+  return validateDomainName(name) === DomainNameValidationResult.VALID;
 }
 
 export function isKTAddress(address: string) {
